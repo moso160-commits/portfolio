@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1623">
+<title>投資組合追蹤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+:root{
+  --bg:#0f1623;--bg2:#1a2236;--bg3:#232f45;--bg4:#2a3850;
+  --text:#e8edf5;--text2:#8a9ab5;--text3:#5a6a85;
+  --accent:#3b82f6;--red:#f87171;--orange:#fb923c;
+  --green:#34d399;--yellow:#fbbf24;--purple:#a78bfa;
+  --border:#2a3850;--card-radius:14px;
+  --font:'Noto Sans TC',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px}
+
+.app{display:flex;flex-direction:column;max-width:430px;margin:0 auto;height:100vh;overflow:hidden}
+
+/* HEADER */
+.header{background:var(--bg2);padding:16px 16px 0;border-bottom:1px solid var(--border);flex-shrink:0}
+.header-summary{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.pnl-area{flex:1}
+.pnl-label{font-size:11px;color:var(--text2)}
+.pnl-val{font-size:22px;font-weight:800;color:var(--red);letter-spacing:-.5px;line-height:1.1}
+.pnl-pct{font-size:13px;color:var(--red);margin-top:1px}
+.badge-risk{background:#3b1c1c;color:#f87171;border:1px solid #7f1d1d;font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.badge-risk::before{content:'';width:8px;height:8px;border-radius:50%;background:#f87171;display:inline-block}
+.stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+.stat-mini{background:var(--bg3);border-radius:8px;padding:7px 8px;text-align:center}
+.stat-mini-label{font-size:10px;color:var(--text2);margin-bottom:2px}
+.stat-mini-val{font-size:12px;font-weight:700;color:var(--text);line-height:1.3}
+.stat-mini-val.red{color:var(--red)}
+.alert-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;scrollbar-width:none}
+.alert-bar::-webkit-scrollbar{display:none}
+.alert-pill{white-space:nowrap;padding:5px 10px;border-radius:20px;font-size:11px;display:flex;align-items:center;gap:4px;flex-shrink:0}
+.alert-pill.warn{background:#3a2800;color:#fbbf24;border:1px solid #5a3f00}
+.alert-pill.danger{background:#3b1c1c;color:#f87171;border:1px solid #7f1d1d}
+
+/* TABS */
+.tabs{display:flex;overflow-x:auto;scrollbar-width:none;gap:0}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:10px 13px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:.15s;white-space:nowrap;position:relative;user-select:none}
+.tab.active{color:#3b82f6;border-bottom-color:#3b82f6;font-weight:600}
+.tab .badge{position:absolute;top:6px;right:2px;background:#ef4444;color:#fff;font-size:9px;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+
+/* CONTENT */
+.content{flex:1;padding:14px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.panel{display:none;flex-direction:column;gap:12px}
+.panel.active{display:flex}
+
+/* CARDS */
+.card{background:var(--bg2);border-radius:var(--card-radius);padding:14px;border:1px solid var(--border)}
+.card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+/* STAT GRIDS */
+.stats2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stats3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.stat-box{background:var(--bg3);border-radius:10px;padding:10px 10px}
+.stat-box label{font-size:10px;color:var(--text2);display:block;margin-bottom:4px}
+.stat-box .val{font-size:14px;font-weight:700;line-height:1.2}
+.val.red{color:var(--red)}.val.orange{color:var(--orange)}.val.green{color:var(--green)}.val.yellow{color:var(--yellow)}
+
+/* BUTTONS */
+.add-btn{background:#1e40af;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
+.add-btn:active{opacity:.8;transform:scale(.98)}
+.add-btn.green-btn{background:#065f46}
+.add-btn.outline-btn{background:var(--bg3);color:#60a5fa;border:1px solid #2a3d60}
+
+/* DROPDOWNS */
+.dropdown-row{display:flex;gap:8px;margin-bottom:10px}
+.dropdown{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.dropdown svg{width:14px;height:14px;flex-shrink:0;opacity:.5}
+
+/* TIME BUTTONS */
+.time-btns{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tbtn{padding:6px 11px;border-radius:20px;font-size:12px;background:var(--bg3);color:var(--text2);border:none;cursor:pointer;transition:.15s}
+.tbtn:active{opacity:.7}
+.tbtn.active{background:#3b82f6;color:#fff;font-weight:600}
+
+/* CHART */
+.chart-wrap{position:relative;width:100%;height:200px}
+.chart-legend{display:flex;gap:16px;justify-content:center;margin-top:8px;font-size:11px;color:var(--text2)}
+.chart-legend span{display:flex;align-items:center;gap:5px}
+.dot{width:12px;height:3px;border-radius:2px;display:inline-block}
+.dot-dash{width:12px;height:0;border-top:2px dashed;display:inline-block}
+
+/* DEBT LIST */
+.debt-item{background:var(--bg3);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;transition:.15s}
+.debt-item:active{opacity:.7}
+.debt-item-left .name{font-size:14px;font-weight:700}
+.debt-item-left .type{font-size:11px;color:var(--text2);margin-top:2px}
+.debt-item-left .monthly{font-size:11px;color:var(--text3);margin-top:4px}
+.debt-item-right{text-align:right;flex-shrink:0;margin-left:8px}
+.debt-item-right .amount{font-size:15px;font-weight:800;color:var(--red)}
+.debt-item-right .rate{font-size:11px;color:var(--text2);margin-top:2px}
+.debt-item-right .collateral{font-size:11px;color:#60a5fa;margin-top:2px}
+
+/* DIVIDEND */
+.div-item{background:var(--bg3);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.15s}
+.div-item:active{opacity:.7}
+.div-item-row{display:flex;justify-content:space-between;align-items:flex-start}
+.div-item-left .name{font-size:14px;font-weight:700}
+.div-item-left .code{font-size:11px;color:var(--text2);margin-top:3px;display:flex;align-items:center;gap:5px}
+.div-item-left .date{font-size:11px;color:var(--text3);margin-top:2px}
+.div-item-right{text-align:right;flex-shrink:0;margin-left:8px}
+.div-item-right .total{font-size:15px;font-weight:800;color:var(--green)}
+.div-item-right .per{font-size:11px;color:var(--text2);margin-top:2px}
+.status-tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.status-tag.paid{background:#064e3b;color:#34d399}
+.status-tag.pending{background:#3f1f00;color:#fb923c}
+
+/* SYNC BUTTONS */
+.sync-btns{display:flex;gap:8px}
+.sync-btn{flex:1;padding:11px 8px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;border:none;transition:.15s}
+.sync-btn:active{opacity:.7}
+.sync-btn.blue{background:#1e3a5f;color:#60a5fa}
+.sync-btn.purple{background:#2e1f5e;color:#a78bfa}
+
+.cal-note{background:var(--bg3);border-radius:10px;padding:12px;font-size:12px;color:var(--text2);line-height:1.6}
+
+/* STOCK LIST */
+.stock-list-header{display:flex;justify-content:space-between;padding:0 4px;font-size:11px;color:var(--text3);margin-bottom:6px}
+.stock-item{background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.stock-item:active{opacity:.7}
+.stock-item-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.stock-name{font-size:14px;font-weight:700}
+.stock-code-tag{background:var(--bg4);font-size:10px;color:var(--text2);padding:2px 7px;border-radius:5px;margin-top:3px;display:inline-block}
+.stock-pct{font-size:15px;font-weight:800}
+.stock-nums{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.snum{font-size:12px;color:var(--text2)}
+.snum span{color:var(--text);font-weight:600}
+
+/* RISK */
+.risk-alert{border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+.risk-alert.yellow{background:#3a2800;color:#fbbf24;border:1px solid #5a3f00}
+.risk-alert.red{background:#3b1c1c;color:#f87171;border:1px solid #7f1d1d}
+.risk-icon{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.risk-icon.y{background:#fbbf24}.risk-icon.r{background:#f87171}
+
+.progress-card{background:var(--bg3);border-radius:10px;padding:14px}
+.progress-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.progress-label .title{font-size:14px;font-weight:700}
+.progress-label .pval{font-size:17px;font-weight:800;color:var(--yellow)}
+.progress-track{height:10px;border-radius:5px;background:var(--bg4);overflow:hidden}
+.progress-fill{height:100%;border-radius:5px;background:var(--yellow)}
+.progress-markers{display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--text3)}
+
+/* MAINTAIN */
+.maintain-card{background:#0a2f1a;border-radius:10px;padding:14px;border:1px solid #134d2a}
+.maintain-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.maintain-top .label{font-size:14px;font-weight:700;color:#a7f3d0}
+.maintain-top .mv{font-size:28px;font-weight:800;color:var(--green)}
+.maintain-bar{position:relative;height:14px;border-radius:7px;background:rgba(0,0,0,.3);overflow:visible;margin-bottom:8px}
+.maintain-fill{height:100%;border-radius:7px;background:var(--green)}
+.maintain-marker{position:absolute;top:-2px;width:2px;height:18px;border-radius:1px}
+.maintain-mark-r{background:#f87171}
+.maintain-mark-y{background:#fbbf24}
+.maintain-subs{display:flex;justify-content:space-between;font-size:10px;color:#6ee7b7;margin-bottom:10px}
+.maintain-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
+.mstat .ml{font-size:10px;color:#6ee7b7;margin-bottom:2px;text-align:center}
+.mstat .mv{font-size:13px;font-weight:700;color:#a7f3d0;text-align:center}
+.maintain-ok{font-size:12px;color:var(--green);display:flex;align-items:center;gap:4px;justify-content:center}
+
+.detail-item{background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:8px}
+.detail-item-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.detail-item-top .dname{font-size:14px;font-weight:700}
+.detail-item-top .drate{font-size:15px;font-weight:800;color:var(--green)}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+.detail-grid .dl{font-size:11px;color:var(--text2)}
+.detail-grid .dv{font-size:11px;color:var(--text);font-weight:600;text-align:right}
+
+/* OVERVIEW */
+.trend-chart-wrap{position:relative;width:100%;height:180px}
+
+/* CASH */
+.cash-row{display:flex;justify-content:space-between;align-items:center;background:var(--bg3);border-radius:10px;padding:13px 14px;font-size:14px}
+.cash-label{color:var(--text2);display:flex;align-items:center;gap:6px}
+.cash-val{font-size:17px;font-weight:800}
+.cash-unit{font-size:12px;color:var(--text2);margin-left:3px}
+.update-btn{background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:#60a5fa;font-size:12px;padding:6px 12px;cursor:pointer;display:flex;align-items:center;gap:4px}
+
+/* DONUT */
+.donut-wrap{display:flex;align-items:center;gap:16px;padding:4px 0}
+.donut-legend{flex:1}
+.donut-legend-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;border-bottom:1px solid var(--bg4)}
+.donut-legend-item:last-child{border:none}
+.legend-left{display:flex;align-items:center;gap:7px}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+
+/* MODAL OVERLAY */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-sheet{background:var(--bg2);border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:20px 20px 36px;border-top:1px solid var(--border);transform:translateY(100%);transition:.25s}
+.modal-overlay.open .modal-sheet{transform:translateY(0)}
+.modal-handle{width:40px;height:4px;background:var(--bg4);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:16px}
+.field-group{margin-bottom:14px}
+.field-group label{font-size:12px;color:var(--text2);display:block;margin-bottom:5px}
+.field-group input,.field-group select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;font-family:var(--font);outline:none}
+.field-group input:focus,.field-group select:focus{border-color:var(--accent)}
+.modal-btns{display:flex;gap:8px;margin-top:20px}
+.modal-btn{flex:1;padding:13px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;border:none;transition:.15s}
+.modal-btn:active{opacity:.8;transform:scale(.98)}
+.modal-btn.cancel{background:var(--bg3);color:var(--text2)}
+.modal-btn.confirm{background:var(--accent);color:#fff}
+.modal-btn.danger{background:#7f1d1d;color:#f87171}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-summary">
+      <div class="avatar">📊</div>
+      <div class="pnl-area">
+        <div class="pnl-label">累積損益</div>
+        <div class="pnl-val" id="hPnl">+2,451,234</div>
+        <div class="pnl-pct" id="hPct">+24.45%</div>
+      </div>
+      <div style="text-align:right">
+        <div class="badge-risk" onclick="switchTab('risk')">極限</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:5px">庫存市值</div>
+        <div style="font-size:13px;font-weight:700" id="hMktVal">12,450,223</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-mini"><div class="stat-mini-label">總資產</div><div class="stat-mini-val" id="hAsset">14,123,456</div></div>
+      <div class="stat-mini"><div class="stat-mini-label">總負債</div><div class="stat-mini-val red" id="hDebt">6,378,793<br><span style="font-size:9px;color:var(--text2);font-weight:400">負債率 45.0%</span></div></div>
+      <div class="stat-mini"><div class="stat-mini-label">淨資產</div><div class="stat-mini-val" id="hNet">7,744,663</div></div>
+    </div>
+    <div class="alert-bar">
+      <div class="alert-pill warn">🟡 負債比率 45.0%，槓桿略高</div>
+      <div class="alert-pill danger">🔴 元大台灣50 佔 72.5%，集中度過高</div>
+      <div class="alert-pill warn">🟡 股利不足覆利</div>
+    </div>
+    <div class="tabs" id="tabs">
+      <div class="tab active" onclick="switchTab('holdings')">持股</div>
+      <div class="tab" onclick="switchTab('debt')">負債</div>
+      <div class="tab" onclick="switchTab('dividend')">股利</div>
+      <div class="tab" onclick="switchTab('realized')">已實現</div>
+      <div class="tab" onclick="switchTab('cash')">現金</div>
+      <div class="tab" onclick="switchTab('risk')">風險<span class="badge">3</span></div>
+      <div class="tab" onclick="switchTab('overview')">總覽</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- 持股 -->
+    <div class="panel active" id="panel-holdings">
+      <button class="add-btn" onclick="openModal('add-stock')">＋ 新增持股</button>
+      <div class="card">
+        <div class="card-title">📈 個股 vs 指數績效比較</div>
+        <div class="dropdown-row">
+          <div class="dropdown" onclick="openModal('sel-stock')">
+            <span id="stockSel">創新服務（7828）</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div class="dropdown" onclick="openModal('sel-index')">
+            <span id="indexSel">元大台50 (0050)</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        </div>
+        <div class="time-btns">
+          <button class="tbtn active" onclick="setTime(this)">自動</button>
+          <button class="tbtn" onclick="setTime(this)">1M</button>
+          <button class="tbtn" onclick="setTime(this)">3M</button>
+          <button class="tbtn" onclick="setTime(this)">6M</button>
+          <button class="tbtn" onclick="setTime(this)">1Y</button>
+          <button class="tbtn" onclick="setTime(this)">全部</button>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px">從購入日 2026-01-19 起算（自動）</div>
+        <div class="stats3" style="margin-bottom:8px">
+          <div class="stat-box"><label>持股報酬</label><div class="val red" id="v1">+92.89%</div></div>
+          <div class="stat-box"><label>指數報酬</label><div class="val red" id="v2">+31.54%</div></div>
+          <div class="stat-box"><label>超額報酬</label><div class="val yellow" id="v3">+61.35%</div></div>
+        </div>
+        <div class="stats3" style="margin-bottom:12px">
+          <div class="stat-box"><label>持股年化</label><div class="val red" id="v4">+704.54%</div></div>
+          <div class="stat-box"><label>指數年化</label><div class="val red" id="v5">+138.71%</div></div>
+          <div class="stat-box"><label>最大回檔</label><div class="val yellow" id="v6">-35.92%</div></div>
+        </div>
+        <div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:6px">區間 115 天</div>
+        <div class="chart-wrap"><canvas id="perfChart" role="img" aria-label="個股與指數績效比較折線圖">個股 vs 指數績效折線圖</canvas></div>
+        <div class="chart-legend">
+          <span><span class="dot" style="background:#f87171"></span>創新服務</span>
+          <span><span class="dot-dash" style="border-color:#818cf8"></span>元大台50</span>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);padding:0 4px;font-weight:700;margin-top:4px">持股明細</div>
+      <div class="stock-item" onclick="openModal('edit-stock-0050')">
+        <div class="stock-item-top">
+          <div>
+            <div class="stock-name">元大台灣50</div>
+            <div class="stock-code-tag">0050 · 10 筆 · 首筆 2026-02-24 · 佔 72.5%</div>
+          </div>
+          <div class="stock-pct red">+23.77%</div>
+        </div>
+        <div class="stock-nums">
+          <div class="snum">股數 / 均價 <span>— / 77.48</span></div>
+          <div class="snum">市值 / 現價 <span>— / 95.90</span></div>
+        </div>
+      </div>
+      <div class="stock-item" onclick="openModal('edit-stock-00713')">
+        <div class="stock-item-top">
+          <div>
+            <div class="stock-name">高息低波</div>
+            <div class="stock-code-tag">00713 · 佔 16.7%</div>
+          </div>
+          <div class="stock-pct green">+8.32%</div>
+        </div>
+        <div class="stock-nums">
+          <div class="snum">股數 / 均價 <span>12,706 / —</span></div>
+          <div class="snum">市值 / 現價 <span>— / —</span></div>
+        </div>
+      </div>
+      <div class="stock-item" onclick="openModal('edit-stock-7828')">
+        <div class="stock-item-top">
+          <div>
+            <div class="stock-name">創新服務</div>
+            <div class="stock-code-tag">7828 · 佔 9.1%</div>
+          </div>
+          <div class="stock-pct red">+92.89%</div>
+        </div>
+        <div class="stock-nums">
+          <div class="snum">股數 / 均價 <span>1,000 / —</span></div>
+          <div class="snum">市值 / 現價 <span>— / —</span></div>
+        </div>
+      </div>
+      <div class="stock-item" onclick="openModal('edit-stock-00631L')">
+        <div class="stock-item-top">
+          <div>
+            <div class="stock-name">元大台灣50正2</div>
+            <div class="stock-code-tag">00631L · 佔 0.9%</div>
+          </div>
+          <div class="stock-pct red">+5.10%</div>
+        </div>
+        <div class="stock-nums">
+          <div class="snum">股數 / 均價 <span>— / —</span></div>
+          <div class="snum">市值 / 現價 <span>— / —</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 負債 -->
+    <div class="panel" id="panel-debt">
+      <div class="stats2">
+        <div class="stat-box"><label>總負債</label><div class="val red" id="dTotal">6,378,793</div></div>
+        <div class="stat-box"><label>月均還款</label><div class="val yellow" id="dMonthly">24,083</div><div style="font-size:10px;color:var(--text2);margin-top:2px">含本金</div></div>
+        <div class="stat-box"><label>年利息</label><div class="val orange" id="dAnnInt">172,448</div></div>
+        <div class="stat-box"><label>月利息</label><div class="val orange" id="dMonInt">14,371</div></div>
+      </div>
+      <div id="debtList" style="display:flex;flex-direction:column;gap:8px">
+        <div class="debt-item" onclick="openModal('edit-debt-0')">
+          <div class="debt-item-left"><div class="name">三信商銀</div><div class="type">信用貸款</div><div class="monthly">月利息 3,488</div></div>
+          <div class="debt-item-right"><div class="amount">1,500,000</div><div class="rate">2.79% 年利率</div></div>
+        </div>
+        <div class="debt-item" onclick="openModal('edit-debt-1')">
+          <div class="debt-item-left"><div class="name">元大質押</div><div class="type">股票質押貸款</div><div class="monthly">月利息 2,375</div></div>
+          <div class="debt-item-right"><div class="amount">1,000,000</div><div class="rate">2.85% 年利率</div><div class="collateral">質押 0050</div></div>
+        </div>
+        <div class="debt-item" onclick="openModal('edit-debt-2')">
+          <div class="debt-item-left"><div class="name">元大質押</div><div class="type">股票質押貸款</div><div class="monthly">月利息 1,781</div></div>
+          <div class="debt-item-right"><div class="amount">750,000</div><div class="rate">2.85% 年利率</div><div class="collateral">質押 0050</div></div>
+        </div>
+        <div class="debt-item" onclick="openModal('edit-debt-3')">
+          <div class="debt-item-left"><div class="name">元大質押</div><div class="type">股票質押貸款</div><div class="monthly">月利息 129</div></div>
+          <div class="debt-item-right"><div class="amount">60,000</div><div class="rate">2.58% 年利率</div><div class="collateral">質押 00713</div></div>
+        </div>
+        <div class="debt-item" onclick="openModal('edit-debt-4')">
+          <div class="debt-item-left"><div class="name">元大質押</div><div class="type">股票質押貸款</div><div class="monthly">月利息 1,114</div></div>
+          <div class="debt-item-right"><div class="amount">518,000</div><div class="rate">2.58% 年利率</div><div class="collateral">質押 0050</div></div>
+        </div>
+        <div class="debt-item" onclick="openModal('edit-debt-5')">
+          <div class="debt-item-left"><div class="name">元大質押</div><div class="type">股票質押貸款</div><div class="monthly">月利息 2,150</div></div>
+          <div class="debt-item-right"><div class="amount">1,000,000</div><div class="rate">2.58% 年利率</div><div class="collateral">質押 0050</div></div>
+        </div>
+        <div class="debt-item" onclick="openModal('edit-debt-6')">
+          <div class="debt-item-left"><div class="name">元大質押</div><div class="type">股票質押貸款</div><div class="monthly">月利息 625</div></div>
+          <div class="debt-item-right"><div class="amount">292,000</div><div class="rate">2.58% 年利率</div><div class="collateral">質押 0050</div></div>
+        </div>
+      </div>
+      <button class="add-btn outline-btn" onclick="openModal('add-debt')">＋ 新增負債</button>
+    </div>
+
+    <!-- 股利 -->
+    <div class="panel" id="panel-dividend">
+      <div class="stats2">
+        <div class="stat-box"><label>年股利</label><div class="val green" id="divYear">14,911</div></div>
+        <div class="stat-box"><label>月均股利</label><div class="val green" id="divMonth">1,243</div></div>
+        <div class="stat-box"><label>利息覆蓋率</label><div class="val red" id="divCov">0.09x</div><div style="font-size:10px;color:var(--red);margin-top:2px">⚠ 股利不足覆利</div></div>
+        <div class="stat-box"><label>淨現金流（月）</label><div class="val red" id="divFlow">-22,841</div></div>
+      </div>
+      <div class="sync-btns">
+        <button class="sync-btn blue">🔄 同步除息預告（更新既有）</button>
+        <button class="sync-btn purple">🔄 同步＋自動補上持股</button>
+      </div>
+      <div style="font-size:11px;color:var(--text2);text-align:right">上次同步：1 天前</div>
+      <div class="cal-note">📅 除權息行事曆：暫無未來除權息日（可按上方「同步除息預告」自動帶入）</div>
+      <div class="stock-list-header"><span>名稱/代號</span><span>股數 · 每股 · 總股利</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="div-item" onclick="openModal('edit-div-00713')">
+          <div class="div-item-row">
+            <div class="div-item-left">
+              <div class="name">高息低波</div>
+              <div class="code">00713 <span class="status-tag paid">已發放</span></div>
+              <div class="date">2026/03/30</div>
+            </div>
+            <div class="div-item-right">
+              <div class="total">9,911</div>
+              <div class="per">12,706 股 · 每股 0.78</div>
+            </div>
+          </div>
+        </div>
+        <div class="div-item" onclick="openModal('edit-div-7828')">
+          <div class="div-item-row">
+            <div class="div-item-left">
+              <div class="name">創新服務</div>
+              <div class="code">7828 <span class="status-tag pending">未到期</span></div>
+              <div class="date">2025/06/04</div>
+            </div>
+            <div class="div-item-right">
+              <div class="total">5,000</div>
+              <div class="per">1,000 股 · 年度</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="add-btn green-btn" onclick="openModal('add-dividend')">＋ 新增股利</button>
+    </div>
+
+    <!-- 已實現 -->
+    <div class="panel" id="panel-realized">
+      <div class="stats2">
+        <div class="stat-box"><label>已實現總損益</label><div class="val green" id="realTotal">+0</div></div>
+        <div class="stat-box"><label>本年度損益</label><div class="val green" id="realYear">+0</div></div>
+      </div>
+      <div style="font-size:13px;color:var(--text2);text-align:center;padding:32px 0;background:var(--bg3);border-radius:12px">
+        <div style="font-size:28px;margin-bottom:10px">📭</div>
+        尚無已實現紀錄
+      </div>
+      <button class="add-btn outline-btn" onclick="openModal('add-realized')">＋ 新增已實現</button>
+    </div>
+
+    <!-- 現金 -->
+    <div class="panel" id="panel-cash">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;color:var(--text2)">即時報價</div>
+        <button class="update-btn" onclick="alert('更新報價中…')">🔄 更新報價</button>
+      </div>
+      <div class="cash-row">
+        <div class="cash-label">💵 現金餘額</div>
+        <div><span class="cash-val" id="cashAmt" onclick="openModal('edit-cash')">159,065</span><span class="cash-unit">元</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🥧 持股比例</div>
+        <div class="donut-wrap">
+          <canvas id="donutChart" width="130" height="130" role="img" aria-label="持股比例圓餅圖">0050 73.3%, 00713 16.7%, 7828 9.1%, 00631L 0.9%</canvas>
+          <div class="donut-legend">
+            <div class="donut-legend-item"><div class="legend-left"><span class="legend-dot" style="background:#3b82f6"></span>0050</div><span style="color:var(--text2);font-weight:600">73.3%</span></div>
+            <div class="donut-legend-item"><div class="legend-left"><span class="legend-dot" style="background:#34d399"></span>00713</div><span style="color:var(--text2);font-weight:600">16.7%</span></div>
+            <div class="donut-legend-item"><div class="legend-left"><span class="legend-dot" style="background:#fb923c"></span>7828</div><span style="color:var(--text2);font-weight:600">9.1%</span></div>
+            <div class="donut-legend-item"><div class="legend-left"><span class="legend-dot" style="background:#f87171"></span>00631L</div><span style="color:var(--text2);font-weight:600">0.9%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 風險 -->
+    <div class="panel" id="panel-risk">
+      <div class="risk-alert yellow"><span class="risk-icon y"></span>負債比率 45.0%，槓桿略高</div>
+      <div class="risk-alert red"><span class="risk-icon r"></span>元大台灣50 佔 72.5%，集中度過高</div>
+      <div class="risk-alert yellow"><span class="risk-icon y"></span>股利覆蓋率不足，利息 ＞ 股利</div>
+      <div class="progress-card">
+        <div class="progress-label"><span class="title">負債比率</span><span class="pval">45.0%</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width:45%"></div></div>
+        <div class="progress-markers"><span style="color:var(--green)">安全 &lt;30%</span><span style="color:var(--yellow)">警戒 30-50%</span><span style="color:var(--red)">危險 &gt;50%</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📌 整戶質押維持率</div>
+        <div class="maintain-card">
+          <div class="maintain-top"><span class="label">整戶維持率</span><span class="mv">239.9%</span></div>
+          <div class="maintain-bar">
+            <div class="maintain-fill" style="width:75%"></div>
+            <div class="maintain-marker maintain-mark-r" style="left:31%"></div>
+            <div class="maintain-marker maintain-mark-y" style="left:40%"></div>
+          </div>
+          <div class="maintain-subs"><span>追繳線 100%</span><span>警戒線 130%</span></div>
+          <div class="maintain-stats">
+            <div class="mstat"><div class="ml">質押總市值</div><div class="mv">—</div></div>
+            <div class="mstat"><div class="ml">質押總貸款</div><div class="mv">4,618,793</div></div>
+            <div class="mstat"><div class="ml">安全墊</div><div class="mv">—</div></div>
+          </div>
+          <div class="maintain-ok">✓ 健康，距離警戒線還有 109.9%</div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--text2);margin-top:4px">各筆質押明細（共 9 筆）</div>
+      <div class="detail-item">
+        <div class="detail-item-top"><span class="dname">元大質押</span><span class="drate">182.2%</span></div>
+        <div class="detail-grid">
+          <span class="dl">股票代號</span><span class="dv">0050</span>
+          <span class="dl">現在股價</span><span class="dv">95.90 元</span>
+          <span class="dl">質押股數</span><span class="dv">19,000（19.0 張）</span>
+          <span class="dl">質押市值</span><span class="dv">1,822,100 元</span>
+          <span class="dl">貸款餘額</span><span class="dv">1,000,000 元</span>
+          <span class="dl">維持率</span><span class="dv">182.2%</span>
+        </div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-top"><span class="dname">元大質押</span><span class="drate">204.6%</span></div>
+        <div class="detail-grid">
+          <span class="dl">股票代號</span><span class="dv">0050</span>
+          <span class="dl">現在股價</span><span class="dv">95.90 元</span>
+          <span class="dl">質押股數</span><span class="dv">—</span>
+          <span class="dl">質押市值</span><span class="dv">—</span>
+          <span class="dl">貸款餘額</span><span class="dv">—</span>
+          <span class="dl">維持率</span><span class="dv">204.6%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 總覽 -->
+    <div class="panel" id="panel-overview">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="card-title" style="margin:0">淨資產走勢</div>
+          <div class="time-btns" style="margin:0;gap:4px">
+            <button class="tbtn" onclick="setTime(this)">1M</button>
+            <button class="tbtn active" onclick="setTime(this)">3M</button>
+            <button class="tbtn" onclick="setTime(this)">ALL</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px">2026-05-10 ～ 2026-05-14（5 筆）</div>
+        <div class="trend-chart-wrap"><canvas id="trendChart" role="img" aria-label="淨資產走勢折線圖">淨資產走勢折線圖</canvas></div>
+        <div class="chart-legend" style="margin-top:8px">
+          <span><span class="dot" style="background:#34d399"></span>淨資產</span>
+          <span><span class="dot-dash" style="border-color:#60a5fa"></span>總資產</span>
+          <span><span class="dot-dash" style="border-color:#fbbf24"></span>買進成本</span>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="card-title" style="margin:0">與指數比較</div>
+          <div class="time-btns" style="margin:0;gap:4px">
+            <button class="tbtn" onclick="setTime(this)">1M</button>
+            <button class="tbtn active" onclick="setTime(this)">3M</button>
+            <button class="tbtn" onclick="setTime(this)">1Y</button>
+          </div>
+        </div>
+        <div class="time-btns">
+          <button class="tbtn active" style="background:#6d28d9;color:#fff">元大台50</button>
+          <button class="tbtn" onclick="setTime(this)">高息低波</button>
+          <button class="tbtn" onclick="setTime(this)">富邦台50</button>
+          <button class="tbtn" onclick="setTime(this)">國泰高股息</button>
+        </div>
+        <div class="stats3" style="margin:10px 0">
+          <div class="stat-box"><label>我的股票</label><div class="val red">+24.45%</div><div style="font-size:10px;color:var(--text2);margin-top:2px">從成本起算</div></div>
+          <div class="stat-box"><label>元大台50</label><div class="val red">+23.39%</div><div style="font-size:10px;color:var(--text2);margin-top:2px">近 3M</div></div>
+          <div class="stat-box"><label>超額報酬</label><div class="val orange">+1.07%</div><div style="font-size:10px;color:var(--orange);margin-top:2px">跑贏指數 🏆</div></div>
+        </div>
+        <div class="chart-wrap" style="height:200px"><canvas id="idxChart" role="img" aria-label="與指數比較折線圖">我的報酬 vs 指數報酬折線圖</canvas></div>
+        <div class="chart-legend" style="margin-top:8px">
+          <span><span class="dot" style="background:#a78bfa"></span>指數報酬</span>
+          <span><span class="dot-dash" style="border-color:#f87171"></span>我的報酬</span>
+        </div>
+        <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">已用 22 檔購入日回推歷史報酬；指數近 3M</div>
+      </div>
+    </div>
+
+  </div><!-- end content -->
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal-sheet" id="modalSheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">編輯</div>
+    <div id="modalBody"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+      <button class="modal-btn confirm" onclick="saveModal()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TABS=['holdings','debt','dividend','realized','cash','risk','overview'];
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',TABS[i]===id));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));
+  if(id==='cash'&&!window._donut) drawDonut();
+  if(id==='overview'&&!window._trend) drawTrend();
+}
+
+function setTime(btn){
+  const group=btn.closest('.time-btns');
+  group.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// CHARTS
+const chartCfg={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+  x:{ticks:{color:'#5a6a85',font:{size:10},maxRotation:0},grid:{color:'rgba(255,255,255,.05)'}},
+  y:{ticks:{color:'#5a6a85',font:{size:10}},grid:{color:'rgba(255,255,255,.07)'}}}};
+
+setTimeout(()=>{
+  const labels=['01-19','01-26','02-05','02-15','03-01','03-06','03-15','03-25','04-01','04-08','04-15','04-22','05-01','05-05'];
+  const stock=[0,5,12,28,35,55,70,90,120,158,130,100,95,93];
+  const idx=[0,1,2,4,6,9,12,16,20,24,22,28,32,32];
+  new Chart(document.getElementById('perfChart'),{type:'line',data:{labels,datasets:[
+    {label:'創新服務',data:stock,borderColor:'#f87171',borderWidth:2,pointRadius:0,tension:.3,fill:false},
+    {label:'元大台50',data:idx,borderColor:'#818cf8',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:.4,fill:false}
+  ]},options:{...chartCfg,scales:{...chartCfg.scales,y:{...chartCfg.scales.y,ticks:{...chartCfg.scales.y.ticks,callback:v=>v+'%'}}}}});
+},200);
+
+function drawDonut(){
+  window._donut=true;
+  new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{
+    labels:['0050','00713','7828','00631L'],
+    datasets:[{data:[73.3,16.7,9.1,0.9],backgroundColor:['#3b82f6','#34d399','#fb923c','#f87171'],borderWidth:0,hoverOffset:4}]
+  },options:{responsive:false,cutout:'68%',plugins:{legend:{display:false}}}});
+}
+
+function drawTrend(){
+  window._trend=true;
+  const days=['05-10','05-11','05-12','05-13','05-14'];
+  new Chart(document.getElementById('trendChart'),{type:'line',data:{labels:days,datasets:[
+    {label:'淨資產',data:[7600,7650,7720,7700,7750],borderColor:'#34d399',borderWidth:2,pointRadius:3,tension:.3,fill:false},
+    {label:'總資產',data:[14100,14150,14200,14180,14220],borderColor:'#60a5fa',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false},
+    {label:'買進成本',data:[11100,11100,11100,11100,11100],borderColor:'#fbbf24',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false}
+  ]},options:{...chartCfg,scales:{...chartCfg.scales,y:{...chartCfg.scales.y,ticks:{...chartCfg.scales.y.ticks,callback:v=>Math.round(v/1000)+'k'}}}}});
+
+  new Chart(document.getElementById('idxChart'),{type:'line',data:{
+    labels:['02-23','03-01','03-10','03-17','03-24','04-01','04-09','04-15','04-23','05-01','05-08'],
+    datasets:[
+      {label:'我的報酬',data:[15,42,87,65,48,18,22,26,30,34,24],borderColor:'#f87171',borderWidth:2,borderDash:[4,3],pointRadius:2,pointBackgroundColor:'#f87171',tension:.3,fill:false},
+      {label:'指數報酬',data:[-2,0,2,4,6,5,8,10,12,15,18],borderColor:'#a78bfa',borderWidth:2,pointRadius:0,tension:.4,fill:false}
+    ]
+  },options:{...chartCfg,scales:{...chartCfg.scales,y:{...chartCfg.scales.y,ticks:{...chartCfg.scales.y.ticks,callback:v=>v+'%'}}}}});
+}
+
+// MODAL
+const MODAL_CONFIGS={
+  'add-stock':{title:'新增持股',fields:[{l:'股票代號',k:'code',p:'例：0050'},{l:'股票名稱',k:'name',p:'例：元大台灣50'},{l:'購入股數',k:'shares',p:'例：1000',t:'number'},{l:'購入均價',k:'price',p:'例：77.48',t:'number'},{l:'購入日期',k:'date',t:'date'}]},
+  'edit-stock-0050':{title:'編輯持股 0050',fields:[{l:'股票代號',k:'code',v:'0050'},{l:'股票名稱',k:'name',v:'元大台灣50'},{l:'目前均價',k:'price',p:'77.48',t:'number'},{l:'現價',k:'cur',p:'95.90',t:'number'}]},
+  'edit-stock-00713':{title:'編輯持股 00713',fields:[{l:'股票代號',k:'code',v:'00713'},{l:'股票名稱',k:'name',v:'高息低波'},{l:'持有股數',k:'shares',v:'12706',t:'number'},{l:'現價',k:'cur',p:'',t:'number'}]},
+  'edit-stock-7828':{title:'編輯持股 7828',fields:[{l:'股票代號',k:'code',v:'7828'},{l:'股票名稱',k:'name',v:'創新服務'},{l:'持有股數',k:'shares',v:'1000',t:'number'},{l:'現價',k:'cur',p:'',t:'number'}]},
+  'edit-stock-00631L':{title:'編輯持股 00631L',fields:[{l:'股票代號',k:'code',v:'00631L'},{l:'股票名稱',k:'name',v:'元大台灣50正2'},{l:'持有股數',k:'shares',p:'',t:'number'},{l:'現價',k:'cur',p:'',t:'number'}]},
+  'add-debt':{title:'新增負債',fields:[{l:'機構名稱',k:'bank',p:'例：元大質押'},{l:'貸款類型',k:'type',p:'例：股票質押貸款'},{l:'貸款金額',k:'amount',p:'例：1000000',t:'number'},{l:'年利率 (%)',k:'rate',p:'例：2.85',t:'number'},{l:'質押標的',k:'collateral',p:'例：0050（選填）'}]},
+  'edit-debt-0':{title:'編輯負債：三信商銀',fields:[{l:'機構名稱',k:'bank',v:'三信商銀'},{l:'貸款類型',k:'type',v:'信用貸款'},{l:'貸款金額',k:'amount',v:'1500000',t:'number'},{l:'年利率 (%)',k:'rate',v:'2.79',t:'number'}]},
+  'add-dividend':{title:'新增股利',fields:[{l:'股票代號',k:'code',p:'例：0050'},{l:'股票名稱',k:'name',p:'例：元大台灣50'},{l:'持有股數',k:'shares',p:'',t:'number'},{l:'每股股利',k:'per',p:'例：0.78',t:'number'},{l:'發放日期',k:'date',t:'date'}]},
+  'edit-div-00713':{title:'編輯股利：高息低波',fields:[{l:'股票代號',k:'code',v:'00713'},{l:'持有股數',k:'shares',v:'12706',t:'number'},{l:'每股股利',k:'per',v:'0.78',t:'number'},{l:'發放日期',k:'date',v:'2026-03-30',t:'date'}]},
+  'edit-div-7828':{title:'編輯股利：創新服務',fields:[{l:'股票代號',k:'code',v:'7828'},{l:'持有股數',k:'shares',v:'1000',t:'number'},{l:'每股股利（預估）',k:'per',v:'5',t:'number'},{l:'預計日期',k:'date',v:'2025-06-04',t:'date'}]},
+  'add-realized':{title:'新增已實現',fields:[{l:'股票代號',k:'code',p:'例：0050'},{l:'賣出股數',k:'shares',p:'',t:'number'},{l:'賣出均價',k:'sellPrice',p:'',t:'number'},{l:'買入均價',k:'buyPrice',p:'',t:'number'},{l:'賣出日期',k:'date',t:'date'}]},
+  'edit-cash':{title:'編輯現金餘額',fields:[{l:'現金餘額（元）',k:'cash',v:'159065',t:'number'}]},
+  'sel-stock':{title:'選擇持股',fields:[{l:'股票代號',k:'code',v:'7828'}]},
+  'sel-index':{title:'選擇比較指數',fields:[{l:'指數代號',k:'idx',v:'0050'}]},
+};
+Object.keys(MODAL_CONFIGS).filter(k=>k.startsWith('edit-debt-')&&k!=='edit-debt-0').forEach(k=>{
+  const i=parseInt(k.split('-')[2]);
+  MODAL_CONFIGS[k]={title:`編輯負債 #${i+1}`,fields:[{l:'機構名稱',k:'bank',v:'元大質押'},{l:'貸款類型',k:'type',v:'股票質押貸款'},{l:'貸款金額',k:'amount',t:'number'},{l:'年利率 (%)',k:'rate',t:'number'},{l:'質押標的',k:'collateral',p:'例：0050'}]};
+});
+
+function openModal(key){
+  const cfg=MODAL_CONFIGS[key]||{title:'編輯',fields:[{l:'數值',k:'val',p:''}]};
+  document.getElementById('modalTitle').textContent=cfg.title;
+  document.getElementById('modalBody').innerHTML=cfg.fields.map(f=>`
+    <div class="field-group">
+      <label>${f.l}</label>
+      <input type="${f.t||'text'}" placeholder="${f.p||''}" value="${f.v||''}" data-key="${f.k}">
+    </div>`).join('');
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e){
+  if(!e||e.target===document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function saveModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+</script>
+</body>
+</html>
